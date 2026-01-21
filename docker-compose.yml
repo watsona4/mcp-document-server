@@ -3,15 +3,15 @@ services:
     build: .
     container_name: mcp-document-server
     restart: unless-stopped
-    
+    env_file:
+      - .env
+
     ports:
-      - "8000:8000"
+      - "8252:8000"
     
     volumes:
-      # Mount your local documents directory
-      - ./documents:/documents:ro  # Read-only for security
-      # Alternative: Mount a specific directory from your system
-      # - /path/to/your/work/documents:/documents:ro
+      # Mount rclone directory for documents (synced to Google Drive)
+      - /home/watsam/rclone:/documents:ro  # Read-only for security
     
     environment:
       # Server configuration
@@ -24,17 +24,19 @@ services:
       - MAX_FILE_SIZE_MB=10
       - ALLOWED_EXTENSIONS=.txt,.md,.pdf,.docx,.xlsx,.pptx,.csv,.json,.yaml,.yml,.log
       
-      # Optional: Add authentication token
-      # - MCP_AUTH_TOKEN=your-secret-token-here
+      # Authentication token (required for access) - set in .env or override
+      - MCP_AUTH_TOKEN=${MCP_AUTH_TOKEN:-}
+
+      # Allowed hosts for MCP transport security (Tailscale Funnel + localhost)
+      - MCP_ALLOWED_HOSTS=frigate.taila099fd.ts.net,localhost,127.0.0.1
     
     networks:
       - mcp-network
     
     logging:
-      driver: "json-file"
+      driver: "journald"
       options:
-        max-size: "10m"
-        max-file: "3"
+        tag: "mcp-document-server"
     
     # Security options
     security_opt:

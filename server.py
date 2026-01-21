@@ -25,9 +25,20 @@ logger = logging.getLogger(__name__)
 DOCUMENTS_PATH = Path(os.getenv('DOCUMENTS_PATH', '/documents'))
 MAX_FILE_SIZE = int(os.getenv('MAX_FILE_SIZE_MB', '10')) * 1024 * 1024  # Default 10MB
 ALLOWED_EXTENSIONS = os.getenv('ALLOWED_EXTENSIONS', '.txt,.md,.pdf,.docx,.xlsx,.pptx,.csv,.json,.yaml,.yml,.log').split(',')
+AUTH_TOKEN = os.getenv('MCP_AUTH_TOKEN', '')
 
-# Initialize FastMCP server
-mcp = FastMCP("Document Server")
+# Initialize FastMCP server with transport security settings
+from mcp.server.transport_security import TransportSecuritySettings
+
+# Allow connections from Tailscale Funnel and localhost
+ALLOWED_HOSTS = os.getenv('MCP_ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+
+transport_security = TransportSecuritySettings(
+    allowed_hosts=ALLOWED_HOSTS,
+    allowed_origins=['*'],  # Allow any origin for SSE connections
+)
+
+mcp = FastMCP("Document Server", transport_security=transport_security)
 
 logger.info(f"Document server starting with path: {DOCUMENTS_PATH}")
 logger.info(f"Allowed extensions: {ALLOWED_EXTENSIONS}")
@@ -278,15 +289,19 @@ def list_documents_resource() -> str:
 
 def main():
     """Main entry point"""
+    import uvicorn
+    from starlette.middleware.base import BaseHTTPMiddleware
+    from starlette.responses import Response
+
     # Ensure documents directory exists
     DOCUMENTS_PATH.mkdir(parents=True, exist_ok=True)
-    
+
     logger.info("Starting MCP Document Server")
     logger.info(f"Serving documents from: {DOCUMENTS_PATH}")
-    
+
     # Check which transport to use based on environment
     transport = os.getenv('MCP_TRANSPORT', 'sse')
-    
+
     if transport == 'stdio':
         logger.info("Using STDIO transport")
         mcp.run(transport='stdio')
@@ -295,7 +310,63 @@ def main():
         host = os.getenv('MCP_HOST', '0.0.0.0')
         port = int(os.getenv('MCP_PORT', '8000'))
         logger.info(f"Using SSE transport on {host}:{port}")
-        mcp.run(transport='sse', host=host, port=port)
+
+        app = mcp.sse_app()
+
+        # Add health endpoint
+        from starlette.responses import JSONResponse, Response
+        from starlette.routing import Route
+
+        async def health(request):
+            return JSONResponse({'status': 'healthy'})
+
+        app.routes.append(Route('/health', health))
+
+        # Add authentication middleware if token is configured
+        if AUTH_TOKEN:
+            logger.info("Authentication enabled")
+
+            # Use pure ASGI middleware (BaseHTTPMiddleware breaks SSE streaming)
+            from starlette.datastructures import URL, QueryParams
+
+            class AuthMiddleware:
+                def __init__(self, app):
+                    self.app = app
+
+                async def __call__(self, scope, receive, send):
+                    if scope["type"] != "http":
+                        return await self.app(scope, receive, send)
+
+                    path = scope.get("path", "")
+
+                    # Allow healthcheck and messages endpoints without token
+                    # (messages require valid session_id from authenticated SSE)
+                    if path == "/health" or path.startswith("/messages"):
+                        return await self.app(scope, receive, send)
+
+                    # Check Authorization header
+                    headers = dict(scope.get("headers", []))
+                    auth_header = headers.get(b"authorization", b"").decode()
+                    if auth_header == f"Bearer {AUTH_TOKEN}":
+                        return await self.app(scope, receive, send)
+
+                    # Check token query parameter
+                    query_string = scope.get("query_string", b"").decode()
+                    query_params = QueryParams(query_string)
+                    if query_params.get("token") == AUTH_TOKEN:
+                        return await self.app(scope, receive, send)
+
+                    # Unauthorized
+                    client = scope.get("client", ("unknown", 0))
+                    logger.warning(f"Unauthorized request from {client[0]}")
+                    response = Response(content="Unauthorized", status_code=401)
+                    await response(scope, receive, send)
+
+            app = AuthMiddleware(app)
+        else:
+            logger.warning("No MCP_AUTH_TOKEN set - server is unauthenticated!")
+
+        uvicorn.run(app, host=host, port=port)
 
 
 if __name__ == '__main__':
