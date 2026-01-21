@@ -1,0 +1,55 @@
+services:
+  mcp-document-server:
+    build: .
+    container_name: mcp-document-server
+    restart: unless-stopped
+    
+    ports:
+      - "8000:8000"
+    
+    volumes:
+      # Mount your local documents directory
+      - ./documents:/documents:ro  # Read-only for security
+      # Alternative: Mount a specific directory from your system
+      # - /path/to/your/work/documents:/documents:ro
+    
+    environment:
+      # Server configuration
+      - MCP_TRANSPORT=sse
+      - MCP_HOST=0.0.0.0
+      - MCP_PORT=8000
+      
+      # Document settings
+      - DOCUMENTS_PATH=/documents
+      - MAX_FILE_SIZE_MB=10
+      - ALLOWED_EXTENSIONS=.txt,.md,.pdf,.docx,.xlsx,.pptx,.csv,.json,.yaml,.yml,.log
+      
+      # Optional: Add authentication token
+      # - MCP_AUTH_TOKEN=your-secret-token-here
+    
+    networks:
+      - mcp-network
+    
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    
+    # Security options
+    security_opt:
+      - no-new-privileges:true
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+
+networks:
+  mcp-network:
+    driver: bridge

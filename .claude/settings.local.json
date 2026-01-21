@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(gh auth:*)",
+      "Bash(gh repo create:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nInitial commit: MCP Document Server\n\nA Python FastAPI-based MCP server providing Claude AI with secure,\nread-only access to local documents via SSE/HTTP or STDIO transports.\n\nFeatures:\n- Document listing, reading, and full-text search\n- PDF, DOCX, XLSX parsing support\n- Path traversal protection and extension whitelisting\n- Docker containerization with resource limits\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")"
+    ]
+  }
+}
