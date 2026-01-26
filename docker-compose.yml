@@ -11,14 +11,17 @@ services:
     
     volumes:
       # Mount rclone directory for documents (synced to Google Drive)
-      - /home/watsam/rclone:/documents:ro  # Read-only for security
+      - /home/watsam/rclone:/documents  # Read-write for create_document tool
     
     environment:
       # Server configuration
       - MCP_TRANSPORT=sse
       - MCP_HOST=0.0.0.0
       - MCP_PORT=8000
-      
+
+      # Logging (DEBUG for verbose, INFO for normal, WARNING for quiet)
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+
       # Document settings
       - DOCUMENTS_PATH=/documents
       - MAX_FILE_SIZE_MB=10
