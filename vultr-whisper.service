@@ -1,0 +1,20 @@
+[Unit]
+Description=Vultr GPU Whisper transcription (ephemeral)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /home/watsam/docker/mcp-document-server/vultr-whisper.py
+WorkingDirectory=/home/watsam/docker/mcp-document-server
+EnvironmentFile=-/home/watsam/docker/mcp-document-server/.env.vultr
+TimeoutStartSec=7200
+User=watsam
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=vultr-whisper
+
+[Install]
+WantedBy=multi-user.target
