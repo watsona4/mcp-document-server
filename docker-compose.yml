@@ -10,7 +10,11 @@ services:
       - "8252:8000"
     
     volumes:
-      - /mnt/gdrive:/documents  # rclone mount of Google Drive
+      - type: bind
+        source: /mnt/gdrive
+        target: /documents
+        bind:
+          propagation: shared
       - /etc/localtime:/etc/localtime:ro
       - /etc/timezone:/etc/timezone:ro
 
