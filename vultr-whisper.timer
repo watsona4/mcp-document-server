@@ -1,10 +1,9 @@
 [Unit]
-Description=Run Vultr Whisper transcription every 30 minutes
+Description=Run Vultr Whisper transcription daily at 5 PM
 
 [Timer]
-OnBootSec=5min
-OnUnitActiveSec=30min
-RandomizedDelaySec=60
+OnCalendar=Mon..Thu 18:00
+RandomizedDelaySec=300
 Persistent=true
 
 [Install]
