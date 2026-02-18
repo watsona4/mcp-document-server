@@ -6,6 +6,8 @@ echo "MCP Document Server Installation Script"
 echo "========================================="
 echo ""
 
+alias docker-compose='docker compose'
+
 # Check for Docker
 if ! command -v docker &> /dev/null; then
     echo "❌ Error: Docker is not installed"

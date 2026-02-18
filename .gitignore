@@ -12,6 +12,7 @@ ENV/
 # Environment
 .env
 .env.local
+.env.vultr
 
 # Documents (don't commit sensitive docs)
 documents/

@@ -3,10 +3,19 @@ FROM python:3.11-slim
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies
+# Install system dependencies (ffmpeg, tesseract, libsndfile for audio processing, gcc for webrtcvad)
 RUN apt-get update && apt-get install -y \
     --no-install-recommends \
+    ffmpeg \
+    tesseract-ocr \
+    tesseract-ocr-eng \
+    libsndfile1-dev \
+    gcc \
+    libc6-dev \
     && rm -rf /var/lib/apt/lists/*
+
+# Install CPU-only PyTorch first (avoids pulling ~2GB CUDA libs)
+RUN pip install --no-cache-dir torch torchaudio --index-url https://download.pytorch.org/whl/cpu
 
 # Copy requirements and install Python dependencies
 COPY requirements.txt .

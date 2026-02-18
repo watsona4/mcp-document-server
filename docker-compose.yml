@@ -10,9 +10,10 @@ services:
       - "8252:8000"
     
     volumes:
-      # Mount rclone directory for documents (synced to Google Drive)
-      - /home/watsam/rclone:/documents  # Read-write for create_document tool
-    
+      - /mnt/gdrive:/documents  # rclone mount of Google Drive
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+
     environment:
       # Server configuration
       - MCP_TRANSPORT=sse
@@ -25,14 +26,30 @@ services:
       # Document settings
       - DOCUMENTS_PATH=/documents
       - MAX_FILE_SIZE_MB=10
-      - ALLOWED_EXTENSIONS=.txt,.md,.pdf,.docx,.xlsx,.pptx,.csv,.json,.yaml,.yml,.log
+      - MAX_VIDEO_SIZE_MB=500
+      - ALLOWED_EXTENSIONS=.txt,.md,.pdf,.docx,.xlsx,.pptx,.csv,.json,.yaml,.yml,.log,.xml,.toml,.ini,.cfg
       
       # Authentication token (required for access) - set in .env or override
       - MCP_AUTH_TOKEN=${MCP_AUTH_TOKEN:-}
 
       # Allowed hosts for MCP transport security (Tailscale Funnel + localhost)
       - MCP_ALLOWED_HOSTS=frigate.taila099fd.ts.net,localhost,127.0.0.1
+
+      # Public URL for generating download links (Tailscale Funnel URL)
+      - MCP_PUBLIC_URL=https://frigate.taila099fd.ts.net
+
+      # Whisper API for audio transcription (set to your GPU desktop's whisper endpoint)
+      - WHISPER_API_URL=${WHISPER_API_URL:-http://host.docker.internal:8872/asr?task=transcribe&output=vtt&language=en&diarize=true}
+      - WHISPER_SCAN_INTERVAL=${WHISPER_SCAN_INTERVAL:-60}
+
+      # Recordings and speaker identification settings
+      - RECORDINGS_DIR=${RECORDINGS_DIR:-Recordings}
+      - SPEAKERS_DIR=${SPEAKERS_DIR:-speakers}
+      - SPEAKER_SIMILARITY_THRESHOLD=${SPEAKER_SIMILARITY_THRESHOLD:-0.75}
     
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
     networks:
       - mcp-network
     
@@ -50,10 +67,10 @@ services:
       resources:
         limits:
           cpus: '1.0'
-          memory: 512M
+          memory: 1536M
         reservations:
           cpus: '0.25'
-          memory: 128M
+          memory: 256M
 
 networks:
   mcp-network:
